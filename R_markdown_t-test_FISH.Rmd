@@ -1,0 +1,101 @@
+---
+title: "T-tests_FISH"
+author: "Marissa Wright-LaGreca"
+date: "17/02/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+##FISH data - t tests on gene expression data (NKA/EFU)
+
+install.packages("datarium")
+install.packages("rstatix")
+install.packages("ggpubr")
+install.packages("tidyverse")
+
+library("datarium")
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+
+setwd("~/FISH/FISH_t-test")
+
+#load data
+
+Data=read.table("FISH_data.txt",header=TRUE)
+> View(Data)
+
+
+#get mean NKA/EFU expression stats
+
+set.seed(123)
+Data %>% sample_n_by(Seawater, size = 2)
+
+Data %>%
+  group_by(Seawater) %>%
+  get_summary_stats(NKA.EFU, type = "mean_sd")
+
+# Welsh t-test = assume variance between groups are not the same 
+
+res <- t.test(NKA.EFU ~ Seawater, data = Data)
+
+#load res
+
+res
+
+# results - p < 0.05 (p = 2.533e-0.5) = there is significant difference between NKA/EFU expression between seawater treatment
+
+stat.test <- Data %>%
+  t_test(NKA.EFU ~ Seawater) %>%
+  add_significance()
+stat.test
+
+#Visualize results
+
+# Create a box-plot without color and data points
+bxp <- ggboxplot(
+  Data, x = "Seawater", y = "NKA.EFU", 
+  ylab = "Relative NKA Expression", xlab = "", add = "jitter"
+)
+
+#creat box plot wihtout color and no data points
+
+bxp <- ggboxplot(
+  Data, x = "Seawater", y = "NKA.EFU", 
+  ylab = "Relative NKA Expression", xlab = "",)
+
+# box plot with color
+
+bxp <- ggboxplot(df, x = "", y = "Relative NKA Expression", fill = "Seawater", palette = c("#00AFBB","#FC4E07"))
+
+#add p value
+
+bxp <- ggboxplot(df, x = "", y = "Relative NKA Expression", fill = "Seawater", palette = c("#00AFBB","#FC4E07"))
+stat.test <- stat.test %>% add_xy_position(x = "Seawater")
+bxp + 
+  stat_pvalue_manual(stat.test, label = "p.signif") +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
+
+
+#Customize p-value labels using glue expression 
+# https://github.com/tidyverse/glue
+#change bracket.nudge.y to adjust where p value text sits
+
+
+bxp + stat_pvalue_manual(
+  stat.test, label = "p.signif,
+  vjust = -1, bracket.nudge.y = 0.1
+) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
+  
+  # add a more detailed p value and statistics
+  
+  stat.test <- stat.test %>% add_xy_position(x = "Seawater")
+bxp + 
+  stat_pvalue_manual(stat.test, tip.length = 0) +
+  labs(subtitle = get_test_label(stat.test, detailed = TRUE))
