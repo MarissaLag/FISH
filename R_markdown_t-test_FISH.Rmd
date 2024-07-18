@@ -22,6 +22,9 @@ library("datarium")
 library(tidyverse)
 library(ggpubr)
 library(rstatix)
+library(ggResidpanel)
+library(DHARMa)
+library(dplyr)
 
 setwd("~/FISH/FISH_t-test")
 
@@ -30,11 +33,12 @@ setwd("~/FISH/FISH_t-test")
 Data=read.table("FISH_data.txt",header=TRUE)
 > View(Data)
 
+Data <- nka_single_cell
 
 #get mean NKA/EFU expression stats
 
 set.seed(123)
-Data %>% sample_n_by(Seawater, size = 2)
+Data %>% sample_n_by(treatment, size = 2)
 
 Data %>%
   group_by(Seawater) %>%
@@ -42,7 +46,7 @@ Data %>%
 
 # Welsh t-test = assume variance between groups are not the same 
 
-res <- t.test(NKA.EFU ~ Seawater, data = Data)
+res <- t.test(nka..1. ~ development, data = Data)
 
 #load res
 
@@ -51,15 +55,39 @@ res
 # results - p < 0.05 (p = 2.533e-0.5) = there is significant difference between NKA/EFU expression between seawater treatment
 
 stat.test <- Data %>%
-  t_test(NKA.EFU ~ Seawater) %>%
+  t_test(nka..1. ~ development) %>%
   add_significance()
 stat.test
+
+#2 way anova 
+#Test normality
+shapiro.test(Data$nka..1.) #does not pass
+#Test homogeneity of variance (or homoscedasticity) 
+leveneTest(nka..1. ~ development*treatment, data = Data) #passes
+
+#use non-parametic ANOVA - ART test
+install.packages("ARTool")
+library(ARTool)
+
+str(Data)
+Data$treatment <- as.factor(Data$treatment)
+Data$development <- as.factor(Data$development)
+
+art_model <- art(nka..1. ~ development*treatment, data = Data)
+
+anova_result <- anova(art_model)
+print(anova_result)
+
+result <- kruskal.test(nka..1. ~ treatment, data = Data_notrocs)
+
+Data_notrocs <- filter(Data, development != "trocophore")
+
 
 #Visualize results
 
 # Create a box-plot without color and data points
 bxp <- ggboxplot(
-  Data, x = "Seawater", y = "NKA.EFU", 
+  Data_notrocs, x = "treatment", y = "nka..1.", 
   ylab = "Relative NKA Expression", xlab = "", add = "jitter"
 )
 
